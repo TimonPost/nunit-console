@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using System.IO;
 using NUnit.Engine.Internal;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using NUnit.Engine.Extensibility;
 
 namespace NUnit.Engine.Drivers
@@ -59,6 +60,7 @@ namespace NUnit.Engine.Drivers
         Assembly _frameworkAssembly;
         object _frameworkController;
         Type _frameworkControllerType;
+        private CustomAssemblyLoadContext _assemblyLoadContext;
 
         /// <summary>
         /// An id prefix that will be passed to the test framework and used as part of the
@@ -77,11 +79,11 @@ namespace NUnit.Engine.Drivers
             var idPrefix = string.IsNullOrEmpty(ID) ? "" : ID + "-";
 
             assemblyPath = Path.GetFullPath(assemblyPath);  //AssemblyLoadContext requires an absolute path
-            var assemblyLoadContext = new CustomAssemblyLoadContext(assemblyPath);
-
+            _assemblyLoadContext = new CustomAssemblyLoadContext(assemblyPath);
+            
             try
             {
-                _testAssembly = assemblyLoadContext.LoadFromAssemblyPath(assemblyPath);
+                _testAssembly = _assemblyLoadContext.LoadFromAssemblyPath(assemblyPath);
             }
             catch (Exception e)
             {
@@ -93,7 +95,7 @@ namespace NUnit.Engine.Drivers
             if (nunitRef == null)
                 throw new NUnitEngineException(FAILED_TO_LOAD_NUNIT);
 
-            _frameworkAssembly = assemblyLoadContext.LoadFromAssemblyName(nunitRef);
+            _frameworkAssembly = _assemblyLoadContext.LoadFromAssemblyName(nunitRef);
             if (_frameworkAssembly == null)
                 throw new NUnitEngineException(FAILED_TO_LOAD_NUNIT);
 
@@ -104,6 +106,7 @@ namespace NUnit.Engine.Drivers
             _frameworkControllerType = _frameworkController.GetType();
 
             log.Info("Loading {0} - see separate log file", _testAssembly.FullName);
+            
             return ExecuteMethod(LOAD_METHOD) as string;
         }
 
@@ -202,6 +205,35 @@ namespace NUnit.Engine.Drivers
                 throw new NUnitEngineException(INVALID_FRAMEWORK_MESSAGE);
             }
             return method.Invoke(_frameworkController, args);
+        }
+
+        ~NUnitNetCore31Driver()
+        {
+            try
+            {
+                // make sure they are null
+                _frameworkAssembly = null;
+                _testAssembly = null;
+                _frameworkController = null;
+                _frameworkControllerType = null;
+
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+
+                // call unload 
+                _assemblyLoadContext.Unload();
+
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+          
+    
         }
     }
 }

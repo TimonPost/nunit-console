@@ -130,7 +130,8 @@ namespace NUnit.Engine
         public void Dispose()
         {
             Dispose(true);
-            GC.SuppressFinalize(this);
+            //GC.SuppressFinalize(this);
+            Console.WriteLine("abc");
             Services.ServiceManager.StopServices();
         }
 

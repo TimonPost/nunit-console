@@ -32,9 +32,9 @@ namespace NUnit.Engine.Internal
     {
         private readonly AssemblyDependencyResolver _resolver;
 
-        public CustomAssemblyLoadContext(string mainAssemblyToLoadPath)
+        public CustomAssemblyLoadContext(string mainAssemblyToLoadPath) : base(isCollectible: true)
         {
-            _resolver = new AssemblyDependencyResolver(mainAssemblyToLoadPath);
+            _resolver = new AssemblyDependencyResolver(mainAssemblyToLoadPath); 
         }
 
         protected override Assembly Load(AssemblyName name)
